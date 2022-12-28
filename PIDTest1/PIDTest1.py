@@ -28,14 +28,17 @@ def PIDLoop(gain_p, gain_i, gain_d, error, previous_error, time, previous_time, 
     p = gain_p * error
     output = p
 
-    inte = gain_i * ((1 / time - previous_time) * integral(error, previous_integral, time - previous_time))
-    i = gain_i * inte
+    i = gain_i * (((1 / (time - previous_time)) * integral(error, previous_integral, time - previous_time))) if time - previous_time > 0 else previous_integral
+
     output += i
 
-    d = gain_d * derivative(error - previous_error, time - previous_time)
+    d = gain_d * (derivative(error - previous_error, time - previous_time)) if time - previous_time > 0 else d
     output += d
     ctrl = output
-    return (output, inte)
+    return (output, i)
+
+def f(x):
+    return -(x**2) + (5 * x)
 
 def main():
     global pos
@@ -44,6 +47,23 @@ def main():
     global d
     global ctrl
 
+    prev_position = 0
+    time = 0
+    prev_time = 0
+    prev_integral = 0
+
+    with open('PIDLogger.csv', 'w') as logger:
+        for i_1 in range(51):
+            time = i_1 / 10
+            position = f(time)
+            outputs = PIDLoop(1, .0936492, 1, position, prev_position, time, prev_time, prev_integral)
+            prev_integral = outputs[1]
+            prev_position = position
+            prev_time = time
+            print(f'{ time } | { position } | { ctrl }')
+            logger.write(f'{ time },{ position },{ p },{ i },{ d },{ ctrl }\n')
+
+    exit()
     with serial.Serial('COM3') as port:
         with open('PIDLogger.csv', 'w') as logger:
             port.baudrate = 1000000
